@@ -1,3 +1,6 @@
+# Chrome add-on package extension
+*.crx
+
 # Firefox add-on package extension
 *.xpi
 

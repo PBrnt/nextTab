@@ -1,58 +1,50 @@
 "use strict";
 /**
  * @author Paul Bournat
- * @version 1.0
+ * @version 2.0
  */
 
-var query = browser.tabs.query;
+/** @global */
+const QUERY = chrome.tabs.query;
 
 /**
  * When the button is clicked then the tab on the right of active one
  * in the current window is activated
  * @summary Go to next tab
  */
-browser.browserAction.onClicked.addListener(function () {
-  getCurrentTabIndex().then(getNextTabID, onError).then(goToTab);
-});
+chrome.browserAction.onClicked.addListener(getCurrentTab);
+
+/** Get the current tab object */
+function getCurrentTab() {
+  QUERY({"currentWindow": true, "active": true}, getNextTab);
+}
 
 /**
- * Returns the index of the active tab in the current window
- * @returns {Number}
- */
-function getCurrentTabIndex() {
-  return query({currentWindow: true, active: true}).then(function (tabs) {
-    return tabs[0].index;
+* Get the following tab of the current one
+* @param {Tab[]} tabs
+*/
+function getNextTab(tabs) {
+  QUERY({"currentWindow": true, "index": tabs[0].index + 1}, identifyNextTab);
+}
+
+/**
+* Determine if there is a tab to the left of the current one or not
+* If it is not the case then the next tab is the first at the very beginning
+* @param {Tab[]} tabs
+*/
+function identifyNextTab(tabs) {
+  if (tabs.length === 1) {
+    goToTab(tabs[0].id);
+  } else {
+    getFirstTab();
+  }
+}
+
+/** Get the tab at the very beginning */
+function getFirstTab() {
+  QUERY({"currentWindow": true, "index": 0}, function (tabs) {
+    goToTab(tabs[0].id);
   });
-}
-
-/**
- * Returns the ID of the first tab in the current window
- * @returns {Number}
- */
-function getFirstTabID() {
-  return query({currentWindow: true, index: 0}).then(function (tabs) {
-    if (tabs.length === 1) {
-      return tabs[0].id;
-    } else {
-      console.error("Error: Unable to get first tab id");
-    }
-  }, onError);
-}
-
-/**
- * Returns the ID of the tab following the one at the given index
- * in the current window
- * @param {Number} index
- * @returns {Number}
- */
-function getNextTabID(index) {
-  return query({currentWindow: true, index: index + 1}).then(function (tabs) {
-    if (tabs.length === 1) {
-      return tabs[0].id;
-    } else {
-      return getFirstTabID();
-    }
-  }, onError);
 }
 
 /**
@@ -60,9 +52,5 @@ function getNextTabID(index) {
  * @param {Number} id
  */
 function goToTab(id) {
-  browser.tabs.update(id, {active: true}).then(null, onError);
-}
-
-function onError(error) {
-  console.error(error.toString());
+  chrome.tabs.update(id, {"active": true});
 }
