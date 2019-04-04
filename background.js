@@ -1,56 +1,60 @@
-"use strict";
+'use strict';
 /**
  * @author Paul Bournat
- * @version 2.0
+ * @version 2.0.1
  */
 
 /** @global */
-const QUERY = chrome.tabs.query;
+const { query, update } = browser.tabs;
+
+browser.browserAction.onClicked.addListener(goToNextTab);
 
 /**
  * When the button is clicked then the tab on the right of active one
  * in the current window is activated
  * @summary Go to next tab
  */
-chrome.browserAction.onClicked.addListener(getCurrentTab);
+async function goToNextTab() {
+  try {
+    const currentTabIndex = await getCurrentTabIndex()
 
-/** Get the current tab object */
-function getCurrentTab() {
-  QUERY({"currentWindow": true, "active": true}, getNextTab);
-}
+    const tabsNumber = await getTabsNumber();
 
-/**
-* Get the following tab of the current one
-* @param {Tab[]} tabs
-*/
-function getNextTab(tabs) {
-  QUERY({"currentWindow": true, "index": tabs[0].index + 1}, identifyNextTab);
-}
+    const nextTabIndex = getNextTabIndex(currentTabIndex, tabsNumber);
+    const nextTabID = await getNextTabID(nextTabIndex);
 
-/**
-* Determine if there is a tab to the left of the current one or not
-* If it is not the case then the next tab is the first at the very beginning
-* @param {Tab[]} tabs
-*/
-function identifyNextTab(tabs) {
-  if (tabs.length === 1) {
-    goToTab(tabs[0].id);
-  } else {
-    getFirstTab();
+    goToTab(nextTabID);
+  } catch (error) {
+    console.error(error.message);
   }
 }
 
-/** Get the tab at the very beginning */
-function getFirstTab() {
-  QUERY({"currentWindow": true, "index": 0}, function (tabs) {
-    goToTab(tabs[0].id);
-  });
-}
+/** Get the current tab index */
+const getCurrentTabIndex = async () =>
+  (await query({ currentWindow: true, active: true }))[0].index;
+
+/**
+* Determine if the current tab is the last tab
+* If it is the case then the next tab is the first at the very beginning
+* @param {Number} currentTabIndex
+* @param {Number} tabsNumber
+*/
+const getNextTabIndex = (currentTabIndex, tabsNumber) =>
+  tabsNumber === currentTabIndex + 1 ? 0 : currentTabIndex + 1;
+
+/** 
+ * Get the next tab ID 
+ * @param {Number} nextTabIndex
+*/
+const getNextTabID = async nextTabIndex =>
+  (await query({ currentWindow: true, index: nextTabIndex }))[0].id;
+
+/** Get the number of tabs */
+const getTabsNumber = async () =>
+  (await query({ currentWindow: true })).length;
 
 /**
  * Activate the tab identified by the given ID number
  * @param {Number} id
  */
-function goToTab(id) {
-  chrome.tabs.update(id, {"active": true});
-}
+const goToTab = async tabID => await update(tabID, { active: true });
